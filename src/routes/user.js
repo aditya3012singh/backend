@@ -271,7 +271,7 @@ router.get("/me", authMiddleware, async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      select: { id: true, name: true, email: true, phone:true, location:true, role: true, createdAt: true },
     });
 
     if (!user) {
@@ -317,7 +317,7 @@ router.put("/update-profile", authMiddleware, async (req, res) => {
       return res.status(400).json({ errors: parsed.error.errors });
     }
 
-    const { name, password } = parsed.data;
+    const { name, password , location, phone} = parsed.data;
     const updateData = {};
 
     if (name) updateData.name = name;
@@ -325,6 +325,8 @@ router.put("/update-profile", authMiddleware, async (req, res) => {
       const hashedPassword = await bcrypt.hash(password, 10);
       updateData.password = hashedPassword;
     }
+    if (location) updateData.location = location;
+    if (phone) updateData.phone = phone;
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -335,6 +337,8 @@ router.put("/update-profile", authMiddleware, async (req, res) => {
         email: true,
         role: true,
         createdAt: true,
+        location:true,
+        phone: true
       },
     });
 

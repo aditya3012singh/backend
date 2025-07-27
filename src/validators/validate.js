@@ -15,7 +15,9 @@ export const loginSchema = z.object({
 
 export const updateProfileSchema = z.object({
   name: z.string().min(3).optional(),
-  password: z.string().min(6).optional()
+  password: z.string().min(6).optional(),
+  phone: z.string().min(9).optional(),
+  location: z.string().min(5).optional()
 });
 
 export const deleteUserSchema = z.object({
