@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  TECHNICIAN
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+enum ServiceType {
+  INSTALLATION
+  REPAIR
+  MAINTENANCE
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  password     String
+  phone        String
+  location     String?
+  profilePic   String?
+  address      String?
+  notifications Notification[]
+  bookings     Booking[]
+  role         Role      @default(USER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Technician {
+  id         String     @id @default(uuid())
+  name       String
+  phone      String
+  totalJobs  Int        @default(0)
+  services   Booking[]
+  lastActive DateTime?
+}
+
+model Booking {
+  id             String       @id @default(uuid())
+  user           User         @relation(fields: [userId], references: [id])
+  userId         String
+  technician     Technician?  @relation(fields: [technicianId], references: [id])
+  technicianId   String?
+  serviceType    ServiceType
+  status         BookingStatus @default(PENDING)
+  serviceDate    DateTime
+  remarks        String?
+  report         Report?
+  bookingParts   BookingPart[]
+  createdAt      DateTime    @default(now())
+}
+
+model BookingPart {
+  id         String   @id @default(uuid())
+  booking    Booking  @relation(fields: [bookingId], references: [id])
+  bookingId  String
+  part       Part     @relation(fields: [partId], references: [id])
+  partId     String
+  quantity   Int
+}
+
+model Report {
+  id         String   @id @default(uuid())
+  booking    Booking  @relation(fields: [bookingId], references: [id])
+  bookingId  String   @unique
+  summary    String
+  createdAt  DateTime @default(now())
+}
+
+model Part {
+  id        String       @id @default(uuid())
+  name      String
+  quantity  Int
+  unitCost  Float
+  stockLogs StockLog[]
+  bookings  BookingPart[]
+
+  PurchaseEntry PurchaseEntry[]
+}
+
+model StockLog {
+  id        String   @id @default(uuid())
+  part      Part     @relation(fields: [partId], references: [id])
+  partId    String
+  change    Int
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+model PurchaseEntry {
+  id           String   @id @default(uuid())
+  vendorName   String
+  billNumber   String
+  part         Part     @relation(fields: [partId], references: [id])
+  partId       String
+  quantity     Int
+  costPerUnit  Float
+  purchaseDate DateTime
+  notes        String?
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
