@@ -224,7 +224,7 @@ router.post("/signin", async (req, res) => {
     const token = jwt.sign(
       { id: user.id },
       process.env.JWT_SECRET || "secret",
-      { expiresIn: "1h" }
+      { expiresIn: "24h" }
     );
 
     // Return user without password
