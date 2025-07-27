@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 /**
- * Create a new booking (User)
+ * Create a new booking (User) - Default status PENDING
  */
 router.post("/", authMiddleware, async (req, res) => {
   try {
@@ -20,6 +20,7 @@ router.post("/", authMiddleware, async (req, res) => {
         serviceType,
         serviceDate: new Date(serviceDate),
         remarks,
+        status: "PENDING", // Explicitly set default
       },
     });
 
@@ -31,7 +32,7 @@ router.post("/", authMiddleware, async (req, res) => {
 });
 
 /**
- * Get all bookings (Admin)
+ * Get all bookings (Admin only)
  */
 router.get("/", authMiddleware, isAdmin, async (req, res) => {
   try {
@@ -75,7 +76,8 @@ router.get("/my", authMiddleware, async (req, res) => {
 });
 
 /**
- * Assign technician to booking (Admin)
+ * Assign technician to booking (Admin only)
+ * Auto-sets status to IN_PROGRESS
  */
 router.post("/:id/assign", authMiddleware, isAdmin, async (req, res) => {
   try {
@@ -92,7 +94,7 @@ router.post("/:id/assign", authMiddleware, isAdmin, async (req, res) => {
       data: { totalJobs: { increment: 1 } },
     });
 
-    res.json({ message: "Technician assigned", booking });
+    res.json({ message: "Technician assigned. Booking is now IN_PROGRESS.", booking });
   } catch (error) {
     console.error("Technician assignment failed:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -100,11 +102,12 @@ router.post("/:id/assign", authMiddleware, isAdmin, async (req, res) => {
 });
 
 /**
- * Update booking status (Technician/Admin)
+ * Update booking status (Admin only)
+ * Can move IN_PROGRESS -> COMPLETED (or revert if needed)
  */
-router.patch("/:id/status", authMiddleware, async (req, res) => {
+router.patch("/:id/status", authMiddleware, isAdmin, async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status } = req.body; // e.g. COMPLETED
     const bookingId = req.params.id;
 
     const updated = await prisma.booking.update({
@@ -112,7 +115,7 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
       data: { status },
     });
 
-    res.json({ message: "Booking status updated", booking: updated });
+    res.json({ message: `Booking status updated to ${status}`, booking: updated });
   } catch (error) {
     console.error("Error updating booking status:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -120,7 +123,8 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
 });
 
 /**
- * Add a report to a booking (Technician)
+ * Add a report (Technician)
+ * Does NOT auto-complete booking anymore
  */
 router.post("/:id/report", authMiddleware, async (req, res) => {
   try {
@@ -134,12 +138,8 @@ router.post("/:id/report", authMiddleware, async (req, res) => {
       data: { bookingId, summary },
     });
 
-    await prisma.booking.update({
-      where: { id: bookingId },
-      data: { status: "COMPLETED" },
-    });
-
-    res.json({ message: "Report added", report });
+    // Keep booking status as is (likely IN_PROGRESS)
+    res.json({ message: "Report added. Awaiting admin to finalize booking.", report });
   } catch (error) {
     console.error("Error adding report:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -147,7 +147,7 @@ router.post("/:id/report", authMiddleware, async (req, res) => {
 });
 
 /**
- * Get a single booking by ID
+ * Get a single booking by ID (User or Admin)
  */
 router.get("/:id", authMiddleware, async (req, res) => {
   try {
@@ -174,6 +174,7 @@ router.get("/:id", authMiddleware, async (req, res) => {
 
 /**
  * Add parts used in a booking (Technician/Admin)
+ * Still allowed, but does not close the booking.
  */
 router.post("/:id/parts", authMiddleware, async (req, res) => {
   try {
@@ -182,20 +183,18 @@ router.post("/:id/parts", authMiddleware, async (req, res) => {
 
     const createdParts = await Promise.all(
       parts.map(async ({ partId, quantity }) => {
-        // Decrease stock quantity
         await prisma.part.update({
           where: { id: partId },
           data: { quantity: { decrement: quantity } },
         });
 
-        // Log part usage in booking
         return prisma.bookingPart.create({
           data: { bookingId, partId, quantity },
         });
       })
     );
 
-    res.json({ message: "Parts added to booking", bookingParts: createdParts });
+    res.json({ message: "Parts logged for booking.", bookingParts: createdParts });
   } catch (error) {
     console.error("Error adding parts:", error);
     res.status(500).json({ message: "Internal server error" });

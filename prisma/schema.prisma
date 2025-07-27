@@ -86,15 +86,17 @@ model Report {
 }
 
 model Part {
-  id        String       @id @default(uuid())
-  name      String
-  quantity  Int
-  unitCost  Float
-  stockLogs StockLog[]
-  bookings  BookingPart[]
+  id          String       @id @default(uuid())
+  name        String
+  description String?      // Optional product description
+  quantity    Int
+  unitCost    Float        // This is your selling price
+  stockLogs   StockLog[]
+  bookings    BookingPart[]
 
   PurchaseEntry PurchaseEntry[]
 }
+
 
 model StockLog {
   id        String   @id @default(uuid())

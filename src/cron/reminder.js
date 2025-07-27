@@ -1,4 +1,3 @@
-// cron/serviceReminder.js
 import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import nodemailer from "nodemailer";
@@ -7,7 +6,7 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 
-// Nodemailer transporter
+// Email transporter (Gmail)
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -16,67 +15,103 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// ⏰ Cron job: Runs every day at 10:00 AM
+// Run every day at 10 AM
 cron.schedule("0 10 * * *", async () => {
-  const threeMonthsAgo = new Date();
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   try {
-    const oldBookings = await prisma.booking.findMany({
+    const dueBookings = await prisma.booking.findMany({
       where: {
         status: "COMPLETED",
-        serviceDate: { lte: threeMonthsAgo },
+        serviceDate: { lte: thirtyDaysAgo },
       },
-      include: { user: true },
+      include: {
+        user: true,
+        technician: true,
+      },
     });
 
-    if (!oldBookings.length) {
-      console.log("✅ No due services found today.");
+    if (!dueBookings.length) {
+      console.log("✅ No 30-day due services today.");
       return;
     }
 
-    let count = 0;
+    let notifiedCount = 0;
 
-    for (const booking of oldBookings) {
-      // Prevent duplicate reminders
+    for (const booking of dueBookings) {
+      // Avoid duplicate notifications
       const alreadyNotified = await prisma.notification.findFirst({
         where: {
-          userId: booking.userId,
-          message: {
-            contains: booking.id,
-          },
+          message: { contains: booking.id },
         },
       });
-
       if (alreadyNotified) continue;
 
-      // 🛎️ Create in-app notification
+      const reminderMessage = `30 days have passed since the last ${booking.serviceType.toLowerCase()} for ${booking.user.name} (Booking ID: ${booking.id}). Time to schedule a new service.`;
+
+      // 1. Notify all Admins
+      const admins = await prisma.user.findMany({ where: { role: "ADMIN" } });
+      for (const admin of admins) {
+        await prisma.notification.create({
+          data: {
+            userId: admin.id,
+            title: "Service Due Reminder",
+            message: reminderMessage,
+          },
+        });
+
+        if (admin.email) {
+          try {
+            await transporter.sendMail({
+              from: process.env.EMAIL_USER,
+              to: admin.email,
+              subject: "30-Day Service Reminder",
+              text: reminderMessage,
+            });
+          } catch (err) {
+            console.error(`Email to admin ${admin.email} failed:`, err.message);
+          }
+        }
+      }
+
+      // 2. Notify the Technician (Provider)
+      if (booking.technicianId) {
+        await prisma.notification.create({
+          data: {
+            userId: booking.technicianId,
+            title: "Service Due Reminder",
+            message: reminderMessage,
+          },
+        });
+      }
+
+      // 3. Notify the User
       await prisma.notification.create({
         data: {
           userId: booking.userId,
-          title: "Service Reminder",
-          message: `It's time for another ${booking.serviceType.toLowerCase()} service (Booking ID: ${booking.id}).`,
+          title: "It's Time for Your Next Service",
+          message: `It's been 30 days since your last ${booking.serviceType.toLowerCase()} (Booking ID: ${booking.id}). Please contact us to schedule your next visit.`,
         },
       });
 
-      // 📧 Send email reminder
       if (booking.user.email) {
         try {
           await transporter.sendMail({
             from: process.env.EMAIL_USER,
             to: booking.user.email,
-            subject: "Service Reminder",
-            text: `Hi ${booking.user.name},\n\nIt's time for another ${booking.serviceType.toLowerCase()} service for your RO system.\n\nBooking ID: ${booking.id}\nDate of last service: ${booking.serviceDate.toDateString()}\n\nThank you,\nTeam RO Services`,
+            subject: "Time for Your Next Service",
+            text: `Hi ${booking.user.name},\n\nIt's been 30 days since your last ${booking.serviceType.toLowerCase()}. Please contact us to schedule your next visit.\n\nBooking ID: ${booking.id}\nDate of last service: ${booking.serviceDate.toDateString()}\n\nThank you,\nTeam RO Services`,
           });
         } catch (emailErr) {
-          console.error("❌ Email failed for:", booking.user.email, emailErr.message);
+          console.error(`Email to user ${booking.user.email} failed:`, emailErr.message);
         }
       }
 
-      count++;
+      notifiedCount++;
     }
 
-    console.log(`✅ ${count} service reminders created and emails sent.`);
+    console.log(`✅ ${notifiedCount} reminders sent to Admins, Technicians, and Users.`);
   } catch (error) {
     console.error("❌ Cron job error:", error);
   }
