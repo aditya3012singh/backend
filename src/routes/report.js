@@ -97,23 +97,23 @@ router.post("/", authMiddleware, async (req, res) => {
 // ... existing imports and POST route
 
 // 📄 GET all reports (Admin only)
-router.get("/", authMiddleware, async (req, res) => {
-  if (req.user.role !== "ADMIN") {
-    return res.status(403).json({ success: false, message: "Access denied" });
-  }
+router.get("/",  async (req, res) => {
+  // if (req.user.role !== "ADMIN") {
+  //   return res.status(403).json({ success: false, message: "Access denied" });
+  // }
 
   try {
     const reports = await prisma.report.findMany({
       include: {
         booking: true,
-        technician: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          },
-        },
+        // technician: {
+        //   select: {
+        //     id: true,
+        //     name: true,
+        //     email: true,
+        //     phone: true,
+        //   },
+        // },
       },
       orderBy: {
         createdAt: "desc",

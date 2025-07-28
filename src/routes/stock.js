@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
 /**
  * 📦 GET all parts with their stock logs (Admin Only)
  */
-router.get("/", authMiddleware, isAdmin, async (req, res) => {
+router.get("/", authMiddleware, async (req, res) => {
   try {
     const parts = await prisma.part.findMany({
       include: {
