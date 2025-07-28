@@ -290,7 +290,28 @@ router.get("/users", authMiddleware, isAdmin, async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+router.get("/technicians", async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: { role: "TECHNICIAN" }, // Only fetch customers
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        location: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
 
+    res.json({ users });
+  } catch (e) {
+    console.error("Error fetching users:", e);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
 // Delete user (admin only)
 router.delete("/user", authMiddleware, isAdmin, async (req, res) => {

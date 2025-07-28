@@ -62,7 +62,7 @@ router.post("/", authMiddleware, isAdmin, async (req, res) => {
         partId,
         change: quantity,
         reason: "Purchased",
-      },
+      },a
     });
 
     res.status(201).json({ success: true, message: "Purchase recorded successfully" });
