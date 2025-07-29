@@ -124,7 +124,8 @@ router.get("/me", authMiddleware, async (req, res) => {
 });
 
 // 📋 Technician - Get Assigned Bookings + Update Last Active
-router.get("/all", authMiddleware, async (req, res) => {
+router.get("/all/assigned", authMiddleware, async (req, res) => {
+  console.log("hello")
   try {
     if (req.user.role !== "TECHNICIAN") {
       return res.status(403).json({ success: false, message: "Access denied" });
