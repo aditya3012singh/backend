@@ -75,7 +75,7 @@ router.get("/my", authMiddleware, async (req, res) => {
   }
 });
 
-/**
+/**x
  * Assign technician to booking (Admin only)
  * Auto-sets status to IN_PROGRESS
  */
@@ -83,6 +83,14 @@ router.post("/:id/assign", authMiddleware, isAdmin, async (req, res) => {
   try {
     const bookingId = req.params.id;
     const { technicianId } = req.body;
+
+    const technician = await prisma.technician.findUnique({
+      where: { id: technicianId },
+    });
+
+    if (!technician) {
+      return res.status(404).json({ message: "Technician not found" });
+    }
 
     const booking = await prisma.booking.update({
       where: { id: bookingId },
@@ -100,6 +108,7 @@ router.post("/:id/assign", authMiddleware, isAdmin, async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 /**
  * Update booking status (Admin only)
