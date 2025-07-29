@@ -85,7 +85,8 @@ router.post("/", authMiddleware, async (req, res) => {
 
 // 📄 GET all reports (Admin only)
 router.get("/", authMiddleware, async (req, res) => {
-  if (req.user.role !== "ADMIN") {
+  // Check if user is admin
+  if (!req.user || req.user.role !== "ADMIN") {
     return res.status(403).json({ success: false, message: "Access denied" });
   }
 
@@ -96,7 +97,6 @@ router.get("/", authMiddleware, async (req, res) => {
           select: {
             id: true,
             name: true,
-            email: true,
             phone: true,
           },
         },
@@ -108,7 +108,7 @@ router.get("/", authMiddleware, async (req, res) => {
 
     res.json({ success: true, reports });
   } catch (error) {
-    console.error("Error fetching reports:", error);
+    console.error("Error fetching reports:", error.stack || error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
