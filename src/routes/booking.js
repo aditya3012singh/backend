@@ -84,34 +84,44 @@ router.post("/:id/assign", authMiddleware, isAdmin, async (req, res) => {
     const bookingId = req.params.id;
     const { technicianId } = req.body;
 
-    // Check technician exists
-    const technician = await prisma.technician.findUnique({
-      where: { id: technicianId },
-    });
     console.log("Technician ID received:", technicianId);
 
-    if (!technician) {
-      return res.status(400).json({ message: "Technician not found" });
+    // Sanity check: is the technician in the DB?
+    const tech = await prisma.technician.findUnique({ where: { id: technicianId } });
+    if (!tech) {
+      console.log("❌ Technician not found in DB");
+      return res.status(404).json({ message: "Technician not found" });
     }
 
-    // Update booking
+    // Proceed to update booking
     const booking = await prisma.booking.update({
       where: { id: bookingId },
-      data: { technicianId, status: "IN_PROGRESS" },
+      data: {
+        technicianId,
+        status: "IN_PROGRESS",
+      },
     });
 
-    // Increment technician jobs
+    console.log("✅ Booking updated:", booking);
+
+    // Increment total jobs
     await prisma.technician.update({
       where: { id: technicianId },
-      data: { totalJobs: { increment: 1 } },
+      data: {
+        totalJobs: { increment: 1 },
+      },
     });
 
-    res.json({ message: "Technician assigned. Booking is now IN_PROGRESS.", booking });
+    res.json({
+      message: "Technician assigned. Booking is now IN_PROGRESS.",
+      booking,
+    });
   } catch (error) {
     console.error("Technician assignment failed:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 
 
