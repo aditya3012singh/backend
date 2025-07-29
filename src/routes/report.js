@@ -21,66 +21,50 @@ router.post("/", authMiddleware, async (req, res) => {
     });
   }
 
-  const { bookingId, remarks, partsUsed } = validation.data;
+  const {
+    customerName,
+    mobileNumber,
+    address,
+    dateTime,
+    serviceType,
+    partsUsed,
+  } = validation.data;
 
   try {
-    const booking = await prisma.booking.findUnique({
-      where: { id: bookingId },
-    });
+    let summary = "";
+    let totalMoney = 0;
 
-    if (!booking) {
-      return res.status(404).json({ success: false, message: "Booking not found" });
-    }
-
-    // ⬇️ Create Report
-    const report = await prisma.report.create({
-      data: {
-        bookingId,
-        technicianId: req.user.id,
-        remarks,
-      },
-    });
-
-    // 🔧 Link parts used + update stock
-    for (const partId of partsUsed) {
-      const part = await prisma.part.findUnique({ where: { id: partId } });
-      if (!part || part.quantity < 1) {
+    for (const item of partsUsed) {
+      const part = await prisma.part.findUnique({ where: { id: item.id } });
+      if (!part || part.quantity < item.quantity) {
         return res.status(400).json({
           success: false,
-          message: `Insufficient stock for part ID: ${partId}`,
+          message: `Insufficient stock for part: ${item.id}`,
         });
       }
 
-      // 🔗 Link part to booking
-      await prisma.bookingPart.create({
-        data: {
-          bookingId,
-          partId,
-        },
-      });
+      summary += `${part.name} x${item.quantity}, `;
+      totalMoney += part.unitCost * item.quantity;
 
-      // 📉 Reduce stock
+      // Decrement stock
       await prisma.part.update({
-        where: { id: partId },
-        data: {
-          quantity: { decrement: 1 },
-        },
-      });
-
-      // 🪵 Stock log
-      await prisma.stockLog.create({
-        data: {
-          partId,
-          change: -1,
-          reason: "Used in service",
-        },
+        where: { id: item.id },
+        data: { quantity: { decrement: item.quantity } },
       });
     }
 
-    // ✅ Mark booking as completed
-    await prisma.booking.update({
-      where: { id: bookingId },
-      data: { status: "COMPLETED" },
+    summary = summary.slice(0, -2); // remove trailing comma
+
+    // Combine everything into remarks
+    const remarks = `Customer: ${customerName}, Phone: ${mobileNumber}, Address: ${address}, DateTime: ${dateTime}, Service: ${serviceType}`;
+
+    const report = await prisma.report.create({
+      data: {
+        technicianId: req.user.id,
+        remarks,
+        summary,
+        totalMoney,
+      },
     });
 
     res.status(201).json({
@@ -94,26 +78,28 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
+
+
+
 // ... existing imports and POST route
 
 // 📄 GET all reports (Admin only)
-router.get("/",  async (req, res) => {
-  // if (req.user.role !== "ADMIN") {
-  //   return res.status(403).json({ success: false, message: "Access denied" });
-  // }
+router.get("/", authMiddleware, async (req, res) => {
+  if (req.user.role !== "ADMIN") {
+    return res.status(403).json({ success: false, message: "Access denied" });
+  }
 
   try {
     const reports = await prisma.report.findMany({
       include: {
-        booking: true,
-        // technician: {
-        //   select: {
-        //     id: true,
-        //     name: true,
-        //     email: true,
-        //     phone: true,
-        //   },
-        // },
+        technician: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -126,6 +112,7 @@ router.get("/",  async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
+
 
 // 📄 GET report by Booking ID (Admin/Technician)
 router.get("/:bookingId", authMiddleware, async (req, res) => {

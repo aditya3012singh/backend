@@ -42,11 +42,24 @@ export const notificationSchema = z.object({
 });
 
 // 🧾 Technician Report Submission
+
 export const reportSchema = z.object({
-  bookingId: z.string().uuid(),
-  remarks: z.string().min(3),
-  partsUsed: z.array(z.string().uuid()).optional(),
+  customerName: z.string().min(1, "Customer name is required"),
+  mobileNumber: z.string().min(10, "Mobile number is required"),
+  address: z.string().min(1, "Address is required"),
+  dateTime: z.string().min(1, "Date & Time is required"),
+  serviceType: z.string().min(1, "Service type is required"),
+  partsUsed: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        quantity: z.number().int().min(1),
+      })
+    )
+    .min(1, "At least one part is required"),
 });
+
+
 
 // 🧍 Technician Registration (by Admin)
 export const technicianSchema = z.object({

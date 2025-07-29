@@ -49,23 +49,23 @@ model Technician {
   name       String
   phone      String
   totalJobs  Int        @default(0)
-  services   Booking[]  @relation("TechnicianBookings") // optional name
+  services   Booking[]
   lastActive DateTime?
+
+  // 👇 Add this line for one-to-many relation with Report
+  reports    Report[]   @relation("TechnicianReports")
 }
 
 model Booking {
   id             String       @id @default(uuid())
   user           User         @relation(fields: [userId], references: [id])
   userId         String
-
-  technician     Technician?  @relation("TechnicianBookings", fields: [technicianId], references: [id])
+  technician     Technician?  @relation(fields: [technicianId], references: [id])
   technicianId   String?
-
   serviceType    ServiceType
   status         BookingStatus @default(PENDING)
   serviceDate    DateTime
   remarks        String?
-  report         Report?
   bookingParts   BookingPart[]
   createdAt      DateTime    @default(now())
 }
@@ -80,12 +80,15 @@ model BookingPart {
 }
 
 model Report {
-  id         String   @id @default(uuid())
-  booking    Booking  @relation(fields: [bookingId], references: [id])
-  bookingId  String   @unique
-  summary    String
-  createdAt  DateTime @default(now())
+  id           String      @id @default(uuid())
+  technician   Technician  @relation("TechnicianReports", fields: [technicianId], references: [id])
+  technicianId String
+  totalMoney   Float      @default(0)
+  summary      String
+  remarks      String?
+  createdAt    DateTime    @default(now())
 }
+
 
 model Part {
   id          String       @id @default(uuid())
