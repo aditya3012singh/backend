@@ -62,7 +62,6 @@ router.get("/my", authMiddleware, async (req, res) => {
       where: { userId: req.user.id },
       include: {
         technician: true,
-        report: true,
         bookingParts: { include: { part: true } },
       },
       orderBy: { createdAt: "desc" },
