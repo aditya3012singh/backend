@@ -142,6 +142,16 @@ router.post("/signup", async (req, res) => {
         role: role ?? "USER",
       },
     });
+    if (user.role === "TECHNICIAN") {
+      await prisma.technician.create({
+        data: {
+          id: user.id,         // Reuse the same ID as the user
+          name: user.name,
+          phone: user.phone,
+          lastActive: new Date(), // optional: default to current time
+        }
+      });
+    }
 
     const token = jwt.sign(
       { id: user.id, role: user.role },

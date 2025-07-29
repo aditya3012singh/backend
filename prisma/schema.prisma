@@ -49,7 +49,7 @@ model Technician {
   name       String
   phone      String
   totalJobs  Int        @default(0)
-  services   Booking[]
+  services   Booking[]  @relation("TechnicianBookings") // optional name
   lastActive DateTime?
 }
 
@@ -57,8 +57,10 @@ model Booking {
   id             String       @id @default(uuid())
   user           User         @relation(fields: [userId], references: [id])
   userId         String
-  technician     Technician?  @relation(fields: [technicianId], references: [id])
+
+  technician     Technician?  @relation("TechnicianBookings", fields: [technicianId], references: [id])
   technicianId   String?
+
   serviceType    ServiceType
   status         BookingStatus @default(PENDING)
   serviceDate    DateTime
