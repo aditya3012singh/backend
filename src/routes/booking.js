@@ -84,19 +84,23 @@ router.post("/:id/assign", authMiddleware, isAdmin, async (req, res) => {
     const bookingId = req.params.id;
     const { technicianId } = req.body;
 
+    // Check technician exists
     const technician = await prisma.technician.findUnique({
       where: { id: technicianId },
     });
+    console.log("Technician ID received:", technicianId);
 
     if (!technician) {
-      return res.status(404).json({ message: "Technician not found" });
+      return res.status(400).json({ message: "Technician not found" });
     }
 
+    // Update booking
     const booking = await prisma.booking.update({
       where: { id: bookingId },
       data: { technicianId, status: "IN_PROGRESS" },
     });
 
+    // Increment technician jobs
     await prisma.technician.update({
       where: { id: technicianId },
       data: { totalJobs: { increment: 1 } },
@@ -108,6 +112,7 @@ router.post("/:id/assign", authMiddleware, isAdmin, async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 
 /**
