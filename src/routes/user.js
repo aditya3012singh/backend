@@ -125,6 +125,15 @@ router.post("/signup", async (req, res) => {
       }
     }
 
+    if (role === "TECHNICIAN") {
+      const technicianCount = await prisma.user.count({ where: { role: "TECHNICIAN" } });
+      if (technicianCount > 0) {
+        return res.status(403).json({
+          message: "Technician already exists. Only one technician is allowed per system.",
+        });
+      }
+    }
+
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(409).json({ message: "User already exists" });
