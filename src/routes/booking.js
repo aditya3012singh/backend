@@ -40,7 +40,6 @@ router.get("/", authMiddleware, isAdmin, async (req, res) => {
       include: {
         user: true,
         technician: true,
-        report: true,
         bookingParts: { include: { part: true } },
       },
       orderBy: { createdAt: "desc" },
