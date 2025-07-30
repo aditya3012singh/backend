@@ -135,7 +135,6 @@ router.get("/all/assigned", authMiddleware, async (req, res) => {
       where: { technicianId: req.user.id },
       include: {
         user: true,
-        report: true,
         bookingParts: {
           include: { part: true },
         },
