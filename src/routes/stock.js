@@ -160,5 +160,30 @@ router.patch("/:id/reduce", authMiddleware, isAdmin, async (req, res) => {
   }
 });
 
+/**
+ * ❌ DELETE: Delete a part from stock (Admin Only)
+ * URL: /stock/:id
+ */
+router.delete("/:id", authMiddleware, isAdmin, async (req, res) => {
+  const partId = req.params.id;
+
+  try {
+    const part = await prisma.part.findUnique({ where: { id: partId } });
+
+    if (!part) {
+      return res.status(404).json({ success: false, message: "Part not found" });
+    }
+
+    await prisma.stockLog.deleteMany({ where: { partId } }); // optional: clean up logs
+    await prisma.part.delete({ where: { id: partId } });
+
+    res.json({ success: true, message: "Part deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting part:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+
 export default router;
 
