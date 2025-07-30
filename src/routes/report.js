@@ -28,6 +28,7 @@ router.post("/", authMiddleware, async (req, res) => {
     dateTime,
     serviceType,
     partsUsed,
+    amountreceived
   } = validation.data;
 
   try {
@@ -56,7 +57,7 @@ router.post("/", authMiddleware, async (req, res) => {
     summary = summary.slice(0, -2); // remove trailing comma
 
     // Combine everything into remarks
-    const remarks = `Customer: ${customerName}, Phone: ${mobileNumber}, Address: ${address}, DateTime: ${dateTime}, Service: ${serviceType}`;
+    const remarks = `Customer: ${customerName}, Phone: ${mobileNumber}, Address: ${address}, DateTime: ${dateTime}, Service: ${serviceType}, AmountReceived : ${amountreceived}`;
 
     const report = await prisma.report.create({
       data: {
