@@ -87,9 +87,9 @@ router.post("/", authMiddleware, async (req, res) => {
 // 📄 GET all reports (Admin only)
 router.get("/", authMiddleware, async (req, res) => {
   // Check if user is admin
-  if (!req.user || req.user.role !== "ADMIN") {
-    return res.status(403).json({ success: false, message: "Access denied" });
-  }
+  // if (!req.user || req.user.role !== "ADMIN") {
+  //   return res.status(403).json({ success: false, message: "Access denied" });
+  // }
 
   try {
     const reports = await prisma.report.findMany({
@@ -154,6 +154,114 @@ router.get("/:bookingId", authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
+
+// 🔄 PUT update report by ID (Technician only)
+router.put("/:reportId", authMiddleware, async (req, res) => {
+  const { reportId } = req.params;
+
+  if (req.user.role !== "TECHNICIAN") {
+    return res.status(403).json({ success: false, message: "Access denied" });
+  }
+
+  const validation = reportSchema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json({
+      success: false,
+      message: validation.error.errors[0].message,
+    });
+  }
+
+  const {
+    customerName,
+    mobileNumber,
+    address,
+    dateTime,
+    serviceType,
+    partsUsed,
+    amountreceived,
+  } = validation.data;
+
+  try {
+    const existingReport = await prisma.report.findUnique({
+      where: { id: reportId },
+    });
+
+    if (!existingReport) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Report not found" });
+    }
+
+    if (existingReport.technicianId !== req.user.id) {
+      return res
+        .status(403)
+        .json({ success: false, message: "You can only update your own reports" });
+    }
+
+    // Revert previous stock before applying new parts
+    const previousSummaryParts = existingReport.summary
+      .split(", ")
+      .map((entry) => {
+        const [name, qty] = entry.split(" x");
+        return { name: name.trim(), quantity: parseInt(qty) || 0 };
+      });
+
+    for (const prev of previousSummaryParts) {
+      const part = await prisma.part.findFirst({ where: { name: prev.name } });
+      if (part) {
+        await prisma.part.update({
+          where: { id: part.id },
+          data: { quantity: { increment: prev.quantity } },
+        });
+      }
+    }
+
+    // Handle new part usage
+    let newSummary = "";
+    let newTotalMoney = 0;
+
+    for (const item of partsUsed) {
+      const part = await prisma.part.findUnique({ where: { id: item.id } });
+      if (!part || part.quantity < item.quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient stock for part: ${item.id}`,
+        });
+      }
+
+      newSummary += `${part.name} x${item.quantity}, `;
+      newTotalMoney += part.unitCost * item.quantity;
+
+      await prisma.part.update({
+        where: { id: item.id },
+        data: { quantity: { decrement: item.quantity } },
+      });
+    }
+
+    newSummary = newSummary.slice(0, -2); // remove trailing comma
+
+    const newRemarks = `Customer: ${customerName}, Phone: ${mobileNumber}, Address: ${address}, DateTime: ${dateTime}, Service: ${serviceType}, AmountReceived : ${amountreceived}`;
+
+    const updatedReport = await prisma.report.update({
+      where: { id: reportId },
+      data: {
+        remarks: newRemarks,
+        summary: newSummary,
+        totalMoney: newTotalMoney,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "Report updated successfully",
+      report: updatedReport,
+    });
+  } catch (error) {
+    console.error("Error updating report:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
 
 export default router;
 

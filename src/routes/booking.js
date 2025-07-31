@@ -73,6 +73,30 @@ router.get("/my", authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * Get all booking remarks (Admin only)
+ */
+router.get("/remarks", authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const remarks = await prisma.booking.findMany({
+      select: {
+        id: true,
+        remarks: true,
+        userId: true,
+        serviceType: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({ remarks });
+  } catch (error) {
+    console.error("Error fetching remarks:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
 /**x
  * Assign technician to booking (Admin only)
  * Auto-sets status to IN_PROGRESS
