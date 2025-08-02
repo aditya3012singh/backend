@@ -57,7 +57,7 @@ export const reportSchema = z.object({
       })
     )
     .min(1, "At least one part is required"),
-  amountreceived : z.number()  
+  amountReceived : z.number()  
 });
 
 
