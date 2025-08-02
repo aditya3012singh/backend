@@ -199,12 +199,16 @@ router.put("/:reportId", authMiddleware, async (req, res) => {
     }
 
     // Revert previous stock before applying new parts
-    const previousSummaryParts = existingReport.summary
-      .split(", ")
-      .map((entry) => {
-        const [name, qty] = entry.split(" x");
-        return { name: name.trim(), quantity: parseInt(qty) || 0 };
-      });
+const previousSummaryParts = existingReport.summary
+  .split(", ")
+  .map((entry) => {
+    const parts = entry.split(" x");
+    if (parts.length !== 2) return null; // skip invalid entries
+    const [name, qty] = parts;
+    return { name: name.trim(), quantity: parseInt(qty) || 0 };
+  })
+  .filter(Boolean); // remove nulls
+
 
     for (const prev of previousSummaryParts) {
       const part = await prisma.part.findFirst({ where: { name: prev.name } });
