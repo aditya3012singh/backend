@@ -272,25 +272,28 @@ router.patch("/:id", authMiddleware, isAdmin, async (req, res) => {
 });
 
 function updateRemarksFields(remarks, updates) {
-  const lines = remarks.split("\n");
-  const updatedLines = lines.map((line) => {
-    const [key, ...rest] = line.split(":");
-    const trimmedKey = key.trim();
-    if (updates[trimmedKey]) {
-      return `${trimmedKey}: ${updates[trimmedKey]}`;
-    }
-    return line;
-  });
+  const lines = remarks.split("\n").filter(Boolean); // Remove empty lines
+  const lineMap = new Map();
 
-  // Add any missing keys not present in original remarks
-  for (const key of Object.keys(updates)) {
-    if (!lines.some((line) => line.startsWith(`${key}:`))) {
-      updatedLines.push(`${key}: ${updates[key]}`);
+  // Convert current remarks to a Map
+  for (const line of lines) {
+    const [key, ...rest] = line.split(":");
+    if (key && rest.length) {
+      lineMap.set(key.trim(), rest.join(":").trim());
     }
   }
 
-  return updatedLines.join("\n");
+  // Apply updates or insert new fields
+  for (const key in updates) {
+    lineMap.set(key, updates[key]); // always overwrite or add
+  }
+
+  // Return joined string
+  return Array.from(lineMap.entries())
+    .map(([key, value]) => `${key}: ${value}`)
+    .join("\n");
 }
+
 
 /**
  * Update booking remarks fields (name, phone, address, problem)
@@ -331,6 +334,40 @@ router.patch("/:id/remarks", authMiddleware, isAdmin, async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+
+/**
+ * Delete a booking by ID (Admin only)
+ */
+router.delete("/:id", authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+
+    // Optionally check if booking exists before deleting
+    const existing = await prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Delete all associated booking parts and report (optional cleanup)
+    await prisma.bookingPart.deleteMany({ where: { bookingId } });
+    await prisma.report.deleteMany({ where: { bookingId } });
+
+    // Now delete the booking
+    await prisma.booking.delete({
+      where: { id: bookingId },
+    });
+
+    res.json({ message: "Booking deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting booking:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 
 
 export default router;
