@@ -80,14 +80,24 @@ model BookingPart {
 }
 
 model Report {
-  id           String      @id @default(uuid())
-  technician   Technician  @relation("TechnicianReports", fields: [technicianId], references: [id])
-  technicianId String
-  totalMoney   Float      @default(0)
-  summary      String
-  remarks      String?
-  createdAt    DateTime    @default(now())
+  id             String      @id @default(uuid())
+  technician     Technician  @relation("TechnicianReports", fields: [technicianId], references: [id])
+  technicianId   String
+
+  // 👇 Add explicit structured fields instead of remarks
+  customerName   String
+  mobileNumber   String
+  address        String
+  dateTime       DateTime
+  serviceType    String
+  amountReceived Float
+
+  totalMoney     Float      @default(0)
+  summary        String
+
+  createdAt      DateTime    @default(now())
 }
+
 
 
 model Part {
