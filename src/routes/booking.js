@@ -291,7 +291,8 @@ function updateRemarksFields(remarks, updates) {
   // Return joined string
   return Array.from(lineMap.entries())
     .map(([key, value]) => `${key}: ${value}`)
-    .join("\n");
+    .join(", ");
+
 }
 
 
