@@ -247,4 +247,90 @@ router.post("/:id/parts", authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * Update booking details (Admin only)
+ */
+router.patch("/:id", authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const { serviceType, serviceDate, remarks } = req.body;
+
+    const updatedBooking = await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        ...(serviceType && { serviceType }),
+        ...(serviceDate && { serviceDate: new Date(serviceDate) }),
+        ...(remarks && { remarks }),
+      },
+    });
+
+    res.json({ message: "Booking updated successfully", booking: updatedBooking });
+  } catch (error) {
+    console.error("Error updating booking:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+function updateRemarksFields(remarks, updates) {
+  const lines = remarks.split("\n");
+  const updatedLines = lines.map((line) => {
+    const [key, ...rest] = line.split(":");
+    const trimmedKey = key.trim();
+    if (updates[trimmedKey]) {
+      return `${trimmedKey}: ${updates[trimmedKey]}`;
+    }
+    return line;
+  });
+
+  // Add any missing keys not present in original remarks
+  for (const key of Object.keys(updates)) {
+    if (!lines.some((line) => line.startsWith(`${key}:`))) {
+      updatedLines.push(`${key}: ${updates[key]}`);
+    }
+  }
+
+  return updatedLines.join("\n");
+}
+
+/**
+ * Update booking remarks fields (name, phone, address, problem)
+ */
+router.patch("/:id/remarks", authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const { name, phone, address, problem } = req.body;
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    const updates = {};
+    if (name) updates["Name"] = name;
+    if (phone) updates["Phone"] = phone;
+    if (address) updates["Address"] = address;
+    if (problem) updates["Problem"] = problem;
+
+    const updatedRemarks = updateRemarksFields(booking.remarks || "", updates);
+
+    const updatedBooking = await prisma.booking.update({
+      where: { id: bookingId },
+      data: { remarks: updatedRemarks },
+    });
+
+    res.json({
+      message: "Remarks updated successfully",
+      remarks: updatedRemarks,
+      booking: updatedBooking,
+    });
+  } catch (error) {
+    console.error("Error updating remarks:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
 export default router;
