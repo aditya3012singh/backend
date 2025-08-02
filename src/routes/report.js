@@ -27,7 +27,7 @@ router.post("/", authMiddleware, async (req, res) => {
     dateTime,
     serviceType,
     partsUsed,
-    amountReceived
+    amountReceived,
   } = validation.data;
 
   try {
@@ -127,7 +127,7 @@ router.put("/:reportId", authMiddleware, async (req, res) => {
     dateTime,
     serviceType,
     partsUsed,
-    amountReceived
+    amountReceived,
   } = validation.data;
 
   try {
@@ -146,7 +146,6 @@ router.put("/:reportId", authMiddleware, async (req, res) => {
       });
     }
 
-    // Revert previous stock
     const previousSummaryParts = existingReport.summary
       .split(", ")
       .map((entry) => {
@@ -166,7 +165,6 @@ router.put("/:reportId", authMiddleware, async (req, res) => {
       }
     }
 
-    // Handle new part usage
     let newSummary = "";
     let newTotalMoney = 0;
 

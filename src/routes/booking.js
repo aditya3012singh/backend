@@ -354,7 +354,8 @@ router.delete("/:id", authMiddleware, isAdmin, async (req, res) => {
     }
 
     // Delete all associated booking parts and report (optional cleanup)
-    await prisma.bookingPart.deleteMany({ where: { bookingId } });
+    await prisma.booking.delete({ where: { id: bookingId } });
+
     await prisma.report.deleteMany({ where: { bookingId } });
 
     // Now delete the booking
