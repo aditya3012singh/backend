@@ -90,7 +90,7 @@ model Report {
   address        String
   dateTime       DateTime
   serviceType    String
-  amountReceived Float
+  amountReceived Float      @default(0)
 
   totalMoney     Float      @default(0)
   summary        String
