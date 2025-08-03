@@ -1,18 +1,26 @@
-# See https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/
+# .github/workflows/fly-deploy.yml
 
 name: Fly Deploy
+
 on:
   push:
     branches:
-      - main
+      - main  # Change if you deploy from a different branch
+
 jobs:
   deploy:
-    name: Deploy app
+    name: Deploy to Fly.io
     runs-on: ubuntu-latest
-    concurrency: deploy-group    # optional: ensure only one action runs at a time
+    concurrency: deploy-group  # optional: prevents overlapping deploys
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
+      - name: 📦 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Set up Flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: 🚀 Deploy via remote builder
+        run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
