@@ -343,38 +343,69 @@ router.patch("/:id/remarks", authMiddleware, isAdmin, async (req, res) => {
 /**
  * Delete a booking by ID (Admin only)
  */
-router.delete("/:id", authMiddleware, isAdmin, async (req, res) => {
-  try {
-    const bookingId = req.params.id;
+import { parseBookingRemarks } from "../utils/parseBookingRemarks.js";
 
-    // Optional: check if the booking exists
-    const existing = await prisma.booking.findUnique({
+router.delete("/bookings/:id", async (req, res) => {
+  const bookingId = req.params.id;
+
+  try {
+    const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
     });
 
-    if (!existing) {
-      return res.status(404).json({ message: "Booking not found" });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
-    // Optional: delete related records (e.g., bookingParts)
-    await prisma.bookingPart.deleteMany({
-      where: { bookingId },
+    // 1. Parse name, phone, address from booking.remarks
+    const { name, phone, address } = parseBookingRemarks(booking.remarks);
+
+    // 2. Delete related reports that match phone + address + serviceDate
+    await prisma.report.deleteMany({
+      where: {
+        mobileNumber: phone,
+        address: address,
+        dateTime: booking.serviceDate,
+      },
     });
 
-    // ❌ Do NOT delete reports by bookingId — that field no longer exists!
-    // await prisma.report.deleteMany({ where: { bookingId } });
-
-    // ✅ Finally, delete the booking
+    // 3. Delete booking itself
     await prisma.booking.delete({
       where: { id: bookingId },
     });
 
-    res.json({ message: "Booking deleted successfully" });
+    return res.json({ success: true, message: "Booking and related reports deleted." });
   } catch (error) {
-    console.error("Error deleting booking:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Error deleting booking and reports:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
+// utils/parseBookingRemarks.js
+export function parseBookingRemarks(remarks) {
+  const result = {
+    name: "",
+    phone: "",
+    address: "",
+    problem: "",
+  };
+
+  if (!remarks) return result;
+
+  const lines = remarks.split(",");
+
+  lines.forEach((line) => {
+    const [key, ...rest] = line.split(":");
+    const value = rest.join(":").trim();
+
+    if (key.toLowerCase().includes("name")) result.name = value;
+    if (key.toLowerCase().includes("phone")) result.phone = value;
+    if (key.toLowerCase().includes("address")) result.address = value;
+    if (key.toLowerCase().includes("problem")) result.problem = value;
+  });
+
+  return result;
+}
+
 
 
 
