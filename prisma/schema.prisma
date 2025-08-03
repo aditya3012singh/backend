@@ -62,6 +62,7 @@ model Booking {
   userId         String
   technician     Technician?  @relation(fields: [technicianId], references: [id])
   technicianId   String?
+  
   serviceType    ServiceType
   status         BookingStatus @default(PENDING)
   serviceDate    DateTime
