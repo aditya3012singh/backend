@@ -340,11 +340,14 @@ router.patch("/:id/remarks", authMiddleware, isAdmin, async (req, res) => {
 /**
  * Delete a booking by ID (Admin only)
  */
+/**
+ * Delete a booking by ID (Admin only)
+ */
 router.delete("/:id", authMiddleware, isAdmin, async (req, res) => {
   try {
     const bookingId = req.params.id;
 
-    // Optionally check if booking exists before deleting
+    // Optional: check if the booking exists
     const existing = await prisma.booking.findUnique({
       where: { id: bookingId },
     });
@@ -353,12 +356,15 @@ router.delete("/:id", authMiddleware, isAdmin, async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Delete all associated booking parts and report (optional cleanup)
-    await prisma.booking.delete({ where: { id: bookingId } });
+    // Optional: delete related records (e.g., bookingParts)
+    await prisma.bookingPart.deleteMany({
+      where: { bookingId },
+    });
 
-    await prisma.report.deleteMany({ where: { bookingId } });
+    // ❌ Do NOT delete reports by bookingId — that field no longer exists!
+    // await prisma.report.deleteMany({ where: { bookingId } });
 
-    // Now delete the booking
+    // ✅ Finally, delete the booking
     await prisma.booking.delete({
       where: { id: bookingId },
     });
@@ -369,6 +375,7 @@ router.delete("/:id", authMiddleware, isAdmin, async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 
 
