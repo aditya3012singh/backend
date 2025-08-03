@@ -343,7 +343,6 @@ router.patch("/:id/remarks", authMiddleware, isAdmin, async (req, res) => {
 /**
  * Delete a booking by ID (Admin only)
  */
-import { parseBookingRemarks } from "../utils/parseBookingRemarks.js";
 
 router.delete("/bookings/:id", async (req, res) => {
   const bookingId = req.params.id;
@@ -380,8 +379,9 @@ router.delete("/bookings/:id", async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
+
 // utils/parseBookingRemarks.js
-export function parseBookingRemarks(remarks) {
+function parseBookingRemarks(remarks) {
   const result = {
     name: "",
     phone: "",
